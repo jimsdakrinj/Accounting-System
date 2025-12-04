@@ -2,6 +2,10 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -17,6 +21,129 @@ AccountingApp.java
  Note: For production money calculations use BigDecimal.
 */
 
+class LoginForm extends JFrame {
+    private JTextField userField;
+    private JPasswordField passField;
+
+    public LoginForm() {
+        setTitle("Login");
+        setSize(350, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        panel.add(new JLabel("Username:"));
+        userField = new JTextField();
+        panel.add(userField);
+
+        panel.add(new JLabel("Password:"));
+        passField = new JPasswordField();
+        panel.add(passField);
+
+        JButton loginBtn = new JButton("Login");
+        JButton signupBtn = new JButton("Signup");
+
+        panel.add(loginBtn);
+        panel.add(signupBtn);
+
+        add(panel);
+
+        loginBtn.addActionListener(e -> login());
+        signupBtn.addActionListener(e -> {
+            new SignupForm();
+            dispose();
+        });
+
+        setVisible(true);
+    }
+
+    private void login() {
+        String user = userField.getText().trim();
+        String pass = new String(passField.getPassword());
+
+        if (user.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Fill all fields.");
+            return;
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader("users.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(":");
+                if (parts.length == 2 && parts[0].equals(user) && parts[1].equals(pass)) {
+                    JOptionPane.showMessageDialog(this, "Login successful!");
+                    new AccountingApp();     // Open your accounting app after login
+                    dispose();
+                    return;
+                }
+            }
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Error reading users file.");
+        }
+
+        JOptionPane.showMessageDialog(this, "Invalid username or password.");
+    }
+
+}
+class SignupForm extends JFrame {
+    private JTextField userField;
+    private JPasswordField passField;
+
+    public SignupForm() {
+        setTitle("Signup");
+        setSize(350, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        panel.add(new JLabel("New Username:"));
+        userField = new JTextField();
+        panel.add(userField);
+
+        panel.add(new JLabel("New Password:"));
+        passField = new JPasswordField();
+        panel.add(passField);
+
+        JButton registerBtn = new JButton("Register");
+        JButton backBtn = new JButton("Back");
+
+        panel.add(registerBtn);
+        panel.add(backBtn);
+
+        add(panel);
+
+        registerBtn.addActionListener(e -> signup());
+        backBtn.addActionListener(e -> {
+            new LoginForm();
+            dispose();
+        });
+
+        setVisible(true);
+    }
+
+    private void signup() {
+        String user = userField.getText().trim();
+        String pass = new String(passField.getPassword());
+
+        if (user.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Fill all fields.");
+            return;
+        }
+
+        try (FileWriter fw = new FileWriter("users.txt", true)) {
+            fw.write(user + ":" + pass + "\n");
+            JOptionPane.showMessageDialog(this, "Signup successful!");
+            new LoginForm();
+            dispose();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Error writing user file.");
+        }
+    }
+}
 public class AccountingApp extends JFrame {
     private List<Account> accounts;
     private List<Transaction> transactions;
@@ -640,6 +767,7 @@ public class AccountingApp extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(AccountingApp::new);
+        new LoginForm();
+        // SwingUtilities.invokeLater(AccountingApp::new);
     }
 }
