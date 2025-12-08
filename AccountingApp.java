@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -30,7 +31,7 @@ public class AccountingApp extends JFrame {
     private JComboBox<String> ledgerAccountCombo;
     private JComboBox<String> debitComboGlobal;
     private JComboBox<String> creditComboGlobal;
-    private JTabbedPane mainTabbedPane;
+    private JTabbedPane mainTabbedPane; // Key component for navigation
 
     // Design Colors
     private final Color PRIMARY_BLUE = new Color(20, 50, 80); // Dark Blue
@@ -67,7 +68,7 @@ public class AccountingApp extends JFrame {
 
         mainTabbedPane.addTab("Add New Transaction", createAddTransactionPanel());
         mainTabbedPane.addTab("Transactions", createTransactionsPanel());
-        mainTabbedPane.addTab("Chart of Accounts", createAccountsPanel()); 
+        mainTabbedPane.addTab("Accounts", createAccountsPanel()); 
         mainTabbedPane.addTab("General Journal", createGeneralJournalPanel());
         mainTabbedPane.addTab("General Ledger", createGeneralLedgerPanel());
         mainTabbedPane.addTab("Balance Sheet", createBalanceSheetPanel());
@@ -175,7 +176,7 @@ public class AccountingApp extends JFrame {
         companyName.setForeground(Color.WHITE);
         companyName.setFont(new Font("Segoe UI", Font.BOLD, 28));
         
-        JLabel systemQuote = new JLabel("Transactions . Accounts . General Journal . General Ledger . Balance Sheet");
+        JLabel systemQuote = new JLabel("Transactions • Accounts • General Journal • General Ledger • Balance Sheet");
         systemQuote.setForeground(SECONDARY_MINT);
         systemQuote.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
@@ -186,12 +187,25 @@ public class AccountingApp extends JFrame {
         JPanel menuPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
         menuPanel.setOpaque(false);
         
+        // --- NEW BUTTONS ---
+        JButton homeBtn = createStyledButton("Home");
+        JButton aboutBtn = createStyledButton("About");
+        // --- END NEW BUTTONS ---
+        
         JButton openBtn = createStyledButton("Open File");
         JButton saveBtn = createStyledButton("Save");
         
+        // --- ACTION LISTENERS FOR NEW BUTTONS ---
+        homeBtn.addActionListener(e -> mainTabbedPane.setSelectedIndex(0)); // Index 0 is "Add New Transaction"
+        aboutBtn.addActionListener(e -> createAboutDialog().setVisible(true));
+        // --- END ACTION LISTENERS ---
+
         openBtn.addActionListener(e -> openFile());
         saveBtn.addActionListener(e -> saveFile());
 
+        // Add new buttons to the menu panel
+        menuPanel.add(homeBtn);
+        menuPanel.add(aboutBtn);
         menuPanel.add(openBtn);
         menuPanel.add(saveBtn);
 
@@ -199,6 +213,66 @@ public class AccountingApp extends JFrame {
         header.add(menuPanel, BorderLayout.EAST);
 
         return header;
+    }
+    
+    /**
+     * Creates and returns the About dialog window.
+     */
+    private JDialog createAboutDialog() {
+        JDialog dialog = new JDialog(this, "About this Accounting System", true);
+        dialog.setLayout(new BorderLayout(15, 15));
+        dialog.setSize(450, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setBackground(BACKGROUND_LIGHT);
+        dialog.setResizable(false);
+
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setBorder(new EmptyBorder(20, 20, 20, 20));
+        content.setBackground(Color.WHITE);
+
+        JLabel title = new JLabel("Accounting System Overview", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY_BLUE.darker());
+
+        JTextArea info = new JTextArea();
+        info.setText(
+            "This application simulates a simple proprietorship accounting system based on the double-entry method.\n\n" +
+            "Key functionalities:\n" +
+            "1. **Add New Transaction (Home):** Records debits and credits that must always balance.\n" +
+            "2. **Chart of Accounts:** Displays all existing accounts and their running balances.\n" +
+            "3. **General Journal:** Shows the chronological list of all posted transactions.\n" +
+            "4. **General Ledger:** Allows viewing the detailed activity (T-account) and running balance for any selected account.\n" +
+            "5. **Balance Sheet:** Automatically generates the fundamental financial statement (Assets = Liabilities + Equity).\n\n" +
+            "Data can be saved and loaded using the 'Save' and 'Open File' buttons."+
+            "This system is designed for educational purposes to illustrate basic accounting principles."+
+            "It is not intended for actual financial reporting or compliance with accounting standards."+
+            "Always consult a professional accountant for real-world accounting needs."+
+            "\n\nDeveloped by Group 1(MCNF) for CC-ACCTNG21"+
+            "\nMembers: \n- Turceno, James Gabriel\n- Abad, Alexandra\n- Taburnal, Phoebe Fatima\n- Arong, Dara San\n- Cañoneo, Mark\n- Ranes, Andrea"+
+
+            "\n\n© 2024 Accounting System by MCNF. All rights reserved."
+        );
+        info.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        info.setWrapStyleWord(true);
+        info.setLineWrap(true);
+        info.setEditable(false);
+        info.setBackground(Color.WHITE);
+        info.setCaretPosition(0); // Scroll to top
+
+        content.add(title, BorderLayout.NORTH);
+        content.add(new JScrollPane(info), BorderLayout.CENTER);
+        
+        JButton closeBtn = createStyledButton("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        
+        JPanel southPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        southPanel.add(closeBtn);
+        southPanel.setBackground(Color.WHITE);
+
+        dialog.add(content, BorderLayout.CENTER);
+        dialog.add(southPanel, BorderLayout.SOUTH);
+        
+        return dialog;
     }
     
     // Utility to create styled buttons
@@ -541,7 +615,7 @@ public class AccountingApp extends JFrame {
     private JPanel createAccountsPanel() {
         JPanel panel = createStyledPanel();
         
-        String[] columns = {"Acc #", "Account Name", "Type", "Current Balance"}; 
+        String[] columns = {"Account no.", "Account Name", "Type", "Current Balance"}; 
         accountsTableModel = new DefaultTableModel(columns, 0) {
             public boolean isCellEditable(int r,int c){ return false; }
         };
@@ -663,7 +737,7 @@ public class AccountingApp extends JFrame {
      * Creates a styled JTable, setting the header to dark blue 
      * and minimizing selection/hover effects.
      */
- private JTable createStyledTable(DefaultTableModel model) {
+    private JTable createStyledTable(DefaultTableModel model) {
         JTable table = new JTable(model);
         table.setAutoCreateRowSorter(true);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -682,14 +756,17 @@ public class AccountingApp extends JFrame {
         
         // 2. Override the default header renderer to guarantee consistent colors 
         //    and ignore selection/focus states (which cause the unwanted 'hover' effect).
-        header.setDefaultRenderer((jTable, value, isSelected, hasFocus, row, column) -> {
-            JLabel label = new JLabel(value.toString(), SwingConstants.CENTER);
-            label.setOpaque(true);
-            label.setBackground(HEADER_BG);
-            label.setForeground(HEADER_FG);
-            label.setFont(header.getFont());
-            label.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Color.LIGHT_GRAY));
-            return label;
+        header.setDefaultRenderer(new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable jTable, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = new JLabel(value.toString(), SwingConstants.CENTER);
+                label.setOpaque(true);
+                label.setBackground(HEADER_BG);
+                label.setForeground(HEADER_FG);
+                label.setFont(header.getFont());
+                label.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Color.LIGHT_GRAY));
+                return label;
+            }
         });
 
         // --- Table Row Styling Fixes (Removing Hover on Data Rows) ---
