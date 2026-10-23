@@ -1,8 +1,7 @@
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
-import javax.swing.table.TableCellRenderer;
+import javax.swing.border.*;
+import javax.swing.table.*;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -11,87 +10,229 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.text.NumberFormat;
-import javax.tools.Tool;
 
+/*
+ * Modern Accounting System with Material Design UI
+ * Features:
+ * - Gradient backgrounds
+ * - Rounded panels with shadow effects
+ * - Material design buttons
+ * - Modern color scheme
+ * - Card-based layouts
+ * - Improved typography
+ * - Emoji icons for better UX
+ * - Smooth modern styling
+ */
 
-// Main class sa accounting app
+// ===================== UTILITY CLASSES =====================
+
+class RoundedPanel extends JPanel {
+    private Color backgroundColor;
+    private int cornerRadius;
+    private boolean hasShadow;
+
+    public RoundedPanel(int radius, Color bgColor, boolean shadow) {
+        super();
+        this.cornerRadius = radius;
+        this.backgroundColor = bgColor;
+        this.hasShadow = shadow;
+        setOpaque(false);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        // Shadow effect
+        if (hasShadow) {
+            g2.setColor(new Color(0, 0, 0, 30));
+            g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, cornerRadius + 4, cornerRadius + 4);
+        }
+        
+        // Main background
+        g2.setColor(backgroundColor);
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), cornerRadius, cornerRadius);
+        
+        g2.dispose();
+    }
+
+    @Override
+    protected void paintBorder(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(getForeground());
+        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, cornerRadius, cornerRadius);
+        g2.dispose();
+    }
+}
+
+class GradientPanel extends JPanel {
+    private Color color1;
+    private Color color2;
+    private boolean vertical;
+
+    public GradientPanel(Color color1, Color color2, boolean vertical) {
+        this.color1 = color1;
+        this.color2 = color2;
+        this.vertical = vertical;
+        setOpaque(false);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        GradientPaint gradient = new GradientPaint(
+            0, 0, color1,
+            vertical ? 0 : getWidth(), vertical ? getHeight() : 0, color2
+        );
+        g2.setPaint(gradient);
+        g2.fillRect(0, 0, getWidth(), getHeight());
+        
+        g2.dispose();
+    }
+}
+
+class ModernButton extends JButton {
+    private Color normalBg;
+    private Color hoverBg;
+    private Color pressedBg;
+    private int radius;
+
+    public ModernButton(String text, Color normalBg, Color hoverBg, Color pressedBg, int radius) {
+        super(text);
+        this.normalBg = normalBg;
+        this.hoverBg = hoverBg;
+        this.pressedBg = pressedBg;
+        this.radius = radius;
+        
+        setContentAreaFilled(false);
+        setFocusPainted(false);
+        setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        setFont(new Font("Segoe UI", Font.BOLD, 14));
+        setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                setBackground(hoverBg);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                setBackground(normalBg);
+            }
+            
+            @Override
+            public void mousePressed(MouseEvent e) {
+                setBackground(pressedBg);
+            }
+            
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                setBackground(hoverBg);
+            }
+        });
+        
+        setBackground(normalBg);
+        setForeground(Color.WHITE);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        // Background
+        g2.setColor(getBackground());
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
+        
+        // Border
+        g2.setColor(getBackground().darker());
+        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+        
+        super.paintComponent(g2);
+        g2.dispose();
+    }
+
+    @Override
+    protected void paintBorder(Graphics g) {
+        // No additional border
+    }
+}
+
+// ===================== MAIN ACCOUNTING APP =====================
+
+// ===================== MAIN ACCOUNTING APP =====================
+
 public class AccountingApp extends JFrame {
-
-    // --- Private Fields ---
+    // Core data
     private List<Account> accounts;
     private List<Transaction> transactions;
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-    private NumberFormat currencyFormat; 
 
-    // UI Components
+    // Table models for UI
     private DefaultTableModel transactionsTableModel;
     private DefaultTableModel accountsTableModel;
     private DefaultTableModel journalTableModel;
     private DefaultTableModel ledgerTableModel;
     private DefaultTableModel assetsTableModel;
     private DefaultTableModel liabilitiesTableModel;
+
+    // UI controls that need cross-method access
     private JComboBox<String> ledgerAccountCombo;
     private JComboBox<String> debitComboGlobal;
     private JComboBox<String> creditComboGlobal;
-    private JTabbedPane mainTabbedPane; // Key component for navigation
 
-    // Design Colors
-    private final Color PRIMARY_BLUE = new Color(20, 50, 80); // Dark Blue
-    private final Color SECONDARY_MINT = new Color(0, 191, 165); // Mint Green/Teal
-    private final Color BACKGROUND_LIGHT = new Color(245, 248, 250);
+    // Balance sheet labels
+    private JLabel totalAssetsLabel;
+    private JLabel totalLiabLabel;
+
+    // Modern color scheme
+    private final Color PRIMARY = new Color(74, 20, 140);
+    private final Color SECONDARY = new Color(0, 150, 136);
+    private final Color ACCENT = new Color(255, 82, 82);
+    private final Color ACCENT_GREEN = new Color(46, 125, 50);
+    private final Color BACKGROUND = new Color(248, 249, 250);
+    private final Color CARD_BG = new Color(255, 255, 255);
+    private final Color TEXT_PRIMARY = new Color(33, 33, 33);
+    private final Color TEXT_SECONDARY = new Color(100, 100, 100);
 
     public AccountingApp() {
-        try {
-            Image icon = Toolkit.getDefaultToolkit().getImage(AccountingApp.class.getResource("/img/accountingIcon.png"));
-            if (icon != null) {
-                setIconImage(icon);
-            } else {
-                System.err.println("Icon file not found. Check path: /img/accountingIcon.png");
-            }
-        } catch (Exception e) {
-            System.err.println("Error setting icon: " + e.getMessage());
-        }
-
-
-        setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/img/accountingIcon.png")));
-        // Set up formatting and data
-        setLayout(new BorderLayout());
         sdf.setLenient(false);
+
         accounts = new ArrayList<>();
         transactions = new ArrayList<>();
         addPredefinedAccounts();
+
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(BACKGROUND);
+
+        add(createModernHeader(), BorderLayout.NORTH);
+
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setBackground(BACKGROUND);
+        tabbedPane.setForeground(PRIMARY);
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+        tabbedPane.setOpaque(false);
         
-        currencyFormat = NumberFormat.getNumberInstance(Locale.US);
-        currencyFormat.setMinimumFractionDigits(2);
-        currencyFormat.setMaximumFractionDigits(2);
+        // Style tabs
+        UIManager.put("TabbedPane.selected", new Color(74, 20, 140));
         
-        // Apply look and feel (Modernize the UI)
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            // Ignore if L&F can't be set
-        }
+        tabbedPane.addTab(" Add Transaction", createAddTransactionPanel());
+        tabbedPane.addTab(" Transactions", createTransactionsPanel());
+        tabbedPane.addTab(" Accounts", createAccountsPanel());
+        tabbedPane.addTab(" General Journal", createGeneralJournalPanel());
+        tabbedPane.addTab(" General Ledger", createGeneralLedgerPanel());
+        tabbedPane.addTab(" Balance Sheet", createBalanceSheetPanel());
 
-        // Header/navbar
-        add(createHeader(), BorderLayout.NORTH);
-
-        // Tabbed Pane for main content
-        mainTabbedPane = new JTabbedPane();
-        mainTabbedPane.setBackground(BACKGROUND_LIGHT);
-        mainTabbedPane.setForeground(PRIMARY_BLUE);
-        mainTabbedPane.setFont(new Font("Arial", Font.BOLD, 14));
-
-        mainTabbedPane.addTab("Add New Transaction", createAddTransactionPanel());
-        mainTabbedPane.addTab("Transactions", createTransactionsPanel());
-        mainTabbedPane.addTab("Accounts", createAccountsPanel()); 
-        mainTabbedPane.addTab("General Journal", createGeneralJournalPanel());
-        mainTabbedPane.addTab("General Ledger", createGeneralLedgerPanel());
-        mainTabbedPane.addTab("Balance Sheet", createBalanceSheetPanel());
-
-        add(mainTabbedPane, BorderLayout.CENTER);
+        add(tabbedPane, BorderLayout.CENTER);
         
         setTitle("Accounting System");
-        setSize(1100, 700);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setVisible(true);
@@ -99,62 +240,709 @@ public class AccountingApp extends JFrame {
         refreshAllViews();
     }
 
-    // --- Currency Formatting ---
-    private String formatCurrency(double value) {
-        return currencyFormat.format(value);
+    // ===================== MODERN HEADER =====================
+    private JPanel createModernHeader() {
+        RoundedPanel header = new RoundedPanel(0, PRIMARY, false);
+        header.setLayout(new BorderLayout(20, 0));
+        header.setPreferredSize(new Dimension(0, 80));
+
+        // Left side
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.setBorder(BorderFactory.createEmptyBorder(0, 25, 0, 0));
+
+        JLabel iconLabel = new JLabel("");
+        iconLabel.setFont(new Font("Segoe UI", Font.PLAIN, 28));
+        iconLabel.setForeground(Color.WHITE);
+
+        JLabel companyName = new JLabel(" Accounting System");
+        companyName.setForeground(Color.WHITE);
+        companyName.setFont(new Font("Segoe UI", Font.BOLD, 22));
+
+        leftPanel.add(companyName);
+
+        // Right side
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setOpaque(false);
+        rightPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 25));
+
+        ModernButton aboutBtn = new ModernButton("About", SECONDARY, SECONDARY.brighter(), SECONDARY.darker(), 10);
+        ModernButton openFolderBtn = new ModernButton("Open Folder", SECONDARY, SECONDARY.brighter(), SECONDARY.darker(), 10);
+        ModernButton saveBtn = new ModernButton("Save CSV", ACCENT_GREEN, ACCENT_GREEN.brighter(), ACCENT_GREEN.darker(), 10);
+
+        JButton menuBtn = new JButton("");
+        menuBtn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        menuBtn.setBackground(SECONDARY);
+        menuBtn.setForeground(Color.WHITE);
+        menuBtn.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        menuBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        menuBtn.setFocusPainted(false);
+        menuBtn.setContentAreaFilled(false);
+        menuBtn.setOpaque(true);
+        menuBtn.setText("");
+        
+        menuBtn.setVisible(false);
+
+        aboutBtn.addActionListener(e -> showAbout());
+        openFolderBtn.addActionListener(e -> openFolderAction());
+        saveBtn.addActionListener(e -> saveCSVAction());
+
+        rightPanel.add(aboutBtn);
+        rightPanel.add(openFolderBtn);
+        rightPanel.add(saveBtn);
+        rightPanel.add(menuBtn);
+
+        header.add(leftPanel, BorderLayout.WEST);
+        header.add(rightPanel, BorderLayout.EAST);
+
+        return header;
     }
 
-    private String formatAccounting(double value) {
-        if (value < 0) {
-            return "(" + formatCurrency(Math.abs(value)) + ")";
+    private void openFolderAction() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedDir = chooser.getSelectedFile();
+            JOptionPane.showMessageDialog(this, "Opened folder: " + selectedDir.getAbsolutePath());
         }
-        return currencyFormat.format(value);
     }
 
-    // --- Data Classes (Serializable for Save/Open) ---
-    // Ensure all internal types are also Serializable
-    private static class Account implements Serializable {
-        private static final long serialVersionUID = 1L; 
-        private String accountNumber; 
+    private void saveCSVAction() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("accounts.csv"));
+        int result = chooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            try (PrintWriter pw = new PrintWriter(file)) {
+                pw.println("Account Name,Type,Balance");
+                for (Account a : accounts) {
+                    pw.println(a.getName() + "," + a.getType() + "," + a.getBalance());
+                }
+                JOptionPane.showMessageDialog(this, "CSV saved: " + file.getAbsolutePath());
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "Error saving CSV: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void showAbout() {
+        JOptionPane.showMessageDialog(this,
+            "Accounting System Pro v2.0\n\n" +
+            "A modern accounting application with:\n" +
+            " Transaction management\n" +
+            " Account management\n" +
+            " General Journal and Ledger\n" +
+            " Balance Sheet\n" +
+            " Financial Reports\n\n" +
+            "Modern GUI with Material Design\n" +
+            "Made with Java Swing\n",
+            "About",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // ===================== MODERN ADD TRANSACTION PANEL =====================
+    private JPanel createAddTransactionPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new BorderLayout());
+
+        RoundedPanel form = new RoundedPanel(20, new Color(255, 255, 255), true);
+        form.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        form.setLayout(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 15, 15, 15);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+
+        JLabel title = new JLabel("Add New Transaction");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        form.add(title, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.gridy = 1;
+        form.add(createLabel("Date (YYYY-MM-DD):"), gbc);
+        
+        JTextField dateField = new JTextField(sdf.format(new Date()));
+        styleTextField(dateField);
+        gbc.gridx = 1;
+        form.add(dateField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        form.add(createLabel("Description:"), gbc);
+        
+        JTextField descField = new JTextField();
+        styleTextField(descField);
+        gbc.gridx = 1;
+        form.add(descField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        form.add(createLabel("Debit Account:"), gbc);
+        
+        debitComboGlobal = new JComboBox<>();
+        styleComboBox(debitComboGlobal);
+        gbc.gridx = 1;
+        form.add(debitComboGlobal, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        form.add(createLabel("Credit Account:"), gbc);
+        
+        creditComboGlobal = new JComboBox<>();
+        styleComboBox(creditComboGlobal);
+        gbc.gridx = 1;
+        form.add(creditComboGlobal, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        form.add(createLabel("Amount:"), gbc);
+        
+        JTextField amountField = new JTextField();
+        styleTextField(amountField);
+        gbc.gridx = 1;
+        form.add(amountField, gbc);
+
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 15));
+        buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+
+        ModernButton postBtn = new ModernButton("Post Transaction", PRIMARY, PRIMARY.brighter(), PRIMARY.darker(), 15);
+        ModernButton clearBtn = new ModernButton("Clear Fields", SECONDARY, SECONDARY.brighter(), SECONDARY.darker(), 15);
+        
+        postBtn.setPreferredSize(new Dimension(180, 45));
+        clearBtn.setPreferredSize(new Dimension(150, 45));
+
+        buttonPanel.add(postBtn);
+        buttonPanel.add(clearBtn);
+
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 2;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        form.add(buttonPanel, gbc);
+        
+        panel.add(form, BorderLayout.CENTER);
+
+        refreshAccountCombos();
+
+        postBtn.addActionListener(e -> {
+            String dateStr = dateField.getText().trim();
+            String desc = descField.getText().trim();
+            String debitAccName = (String) debitComboGlobal.getSelectedItem();
+            String creditAccName = (String) creditComboGlobal.getSelectedItem();
+            String amtStr = amountField.getText().trim();
+
+            Date date;
+            try {
+                date = sdf.parse(dateStr);
+            } catch (ParseException ex) {
+                JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            double amount;
+            try {
+                amount = Double.parseDouble(amtStr);
+                if (amount <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Amount must be a number greater than zero.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (debitAccName == null || creditAccName == null) {
+                JOptionPane.showMessageDialog(this, "Select both debit and credit accounts.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (debitAccName.equals(creditAccName)) {
+                JOptionPane.showMessageDialog(this, "Debit and credit accounts cannot be the same.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Account debitAcc = getAccountByName(debitAccName);
+            Account creditAcc = getAccountByName(creditAccName);
+            if (debitAcc == null || creditAcc == null) {
+                JOptionPane.showMessageDialog(this, "Selected account not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            debitAcc.applyDebit(amount);
+            creditAcc.applyCredit(amount);
+
+            Transaction tx = new Transaction(date, desc, debitAccName, creditAccName, amount);
+            transactions.add(tx);
+            transactions.sort(Comparator.comparing(Transaction::getDate));
+
+            refreshAllViews();
+
+            JOptionPane.showMessageDialog(this, "Transaction posted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            dateField.setText(sdf.format(new Date()));
+            descField.setText("");
+            amountField.setText("");
+            if (debitComboGlobal.getItemCount() > 0) debitComboGlobal.setSelectedIndex(0);
+            if (creditComboGlobal.getItemCount() > 0) creditComboGlobal.setSelectedIndex(0);
+        });
+
+        clearBtn.addActionListener(e -> {
+            dateField.setText(sdf.format(new Date()));
+            descField.setText("");
+            amountField.setText("");
+            if (debitComboGlobal.getItemCount() > 0) debitComboGlobal.setSelectedIndex(0);
+            if (creditComboGlobal.getItemCount() > 0) creditComboGlobal.setSelectedIndex(0);
+        });
+
+        return panel;
+    }
+
+    private JLabel createLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lbl.setForeground(TEXT_PRIMARY);
+        return lbl;
+    }
+
+    private void styleTextField(JTextComponent field) {
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        field.setBackground(Color.WHITE);
+        field.setPreferredSize(new Dimension(200, 35));
+    }
+
+    private void styleComboBox(JComboBox<?> combo) {
+        combo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        combo.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        combo.setBackground(Color.WHITE);
+        combo.setPreferredSize(new Dimension(200, 35));
+    }
+
+    // ===================== TRANSACTIONS PANEL =====================
+    private JPanel createTransactionsPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new BorderLayout());
+
+        RoundedPanel topPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        topPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 5));
+
+        JLabel title = new JLabel("All Transactions");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY);
+        topPanel.add(title);
+
+        JTextField searchField = new JTextField(30);
+        styleTextField(searchField);
+        topPanel.add(searchField);
+
+        ModernButton searchBtn = new ModernButton("Search", PRIMARY, PRIMARY.brighter(), PRIMARY.darker(), 10);
+        searchBtn.addActionListener(e -> {
+            String query = searchField.getText().trim().toLowerCase();
+            filterTransactions(query);
+        });
+        searchBtn.setPreferredSize(new Dimension(100, 35));
+        topPanel.add(searchBtn);
+
+        searchField.addActionListener(e -> filterTransactions(searchField.getText().trim().toLowerCase()));
+
+        panel.add(topPanel, BorderLayout.NORTH);
+
+        String[] columns = {"Date", "Description", "Debit Account", "Credit Account", "Amount"};
+        transactionsTableModel = new DefaultTableModel(columns, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = createModernTable(transactionsTableModel);
+
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JTable createModernTable(DefaultTableModel model) {
+        JTable table = new JTable(model);
+        table.setAutoCreateRowSorter(true);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setRowHeight(30);
+        table.setFillsViewportHeight(true);
+        table.setShowVerticalLines(false);
+        table.setShowHorizontalLines(true);
+        table.setBackground(Color.WHITE);
+        table.setGridColor(new Color(230, 230, 230));
+        
+        // Header styling
+        JTableHeader header = table.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(PRIMARY);
+        header.setForeground(Color.WHITE);
+        header.setOpaque(true);
+        
+        // Cell renderer
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, 
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                c.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                
+                if (row % 2 == 0) {
+                    c.setBackground(new Color(252, 252, 252));
+                } else {
+                    c.setBackground(Color.WHITE);
+                }
+                
+                if (isSelected) {
+                    c.setBackground(new Color(74, 20, 140, 20));
+                    c.setForeground(PRIMARY);
+                }
+                
+                if (value instanceof String) {
+                    String strValue = (String)value;
+                    if (strValue.startsWith("$") || 
+                        strValue.matches("^-?\\d+\\.\\d{2}$") ||
+                        (strValue.startsWith("(") && strValue.endsWith(")"))) {
+                        ((JLabel)c).setHorizontalAlignment(SwingConstants.RIGHT);
+                    }
+                }
+                
+                return c;
+            }
+        });
+        
+        return table;
+    }
+
+    private void filterTransactions(String query) {
+        transactionsTableModel.setRowCount(0);
+        for (int i = transactions.size()-1; i >= 0; i--) {
+            Transaction tx = transactions.get(i);
+            String dateStr = sdf.format(tx.getDate());
+            if (query.isEmpty()
+                    || dateStr.contains(query)
+                    || tx.getDescription().toLowerCase().contains(query)
+                    || tx.getDebitAccount().toLowerCase().contains(query)
+                    || tx.getCreditAccount().toLowerCase().contains(query)) {
+                transactionsTableModel.addRow(new Object[]{
+                        dateStr,
+                        tx.getDescription(),
+                        tx.getDebitAccount(),
+                        tx.getCreditAccount(),
+                        formatAccounting(tx.getAmount())
+                });
+            }
+        }
+    }
+
+    // ===================== ACCOUNTS PANEL =====================
+    private JPanel createAccountsPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new BorderLayout());
+
+        RoundedPanel topPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        topPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 5));
+
+        JLabel title = new JLabel("Account Management");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY);
+        topPanel.add(title);
+
+        panel.add(topPanel, BorderLayout.NORTH);
+
+        String[] columns = {"Account Name", "Type", "Current Balance"};
+        accountsTableModel = new DefaultTableModel(columns, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = createModernTable(accountsTableModel);
+
+        // Add account form
+        RoundedPanel addPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        addPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        addPanel.setLayout(new GridBagLayout());
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+
+        JLabel addTitle = new JLabel("Add New Account");
+        addTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        addTitle.setForeground(PRIMARY);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        addPanel.add(addTitle, gbc);
+
+        JTextField nameField = new JTextField();
+        styleTextField(nameField);
+        
+        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"Asset", "Liability", "Owner's Equity", "Revenue", "Expense"});
+        styleComboBox(typeCombo);
+        
+        JTextField balanceField = new JTextField();
+        styleTextField(balanceField);
+        
+        ModernButton addBtn = new ModernButton("Add Account", ACCENT_GREEN, ACCENT_GREEN.brighter(), ACCENT_GREEN.darker(), 10);
+        addBtn.setPreferredSize(new Dimension(130, 35));
+
+        gbc.gridwidth = 1;
+        gbc.gridy = 1;
+        addPanel.add(createLabel("Name:"), gbc);
+        gbc.gridx = 1;
+        addPanel.add(nameField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        addPanel.add(createLabel("Type:"), gbc);
+        gbc.gridx = 1;
+        addPanel.add(typeCombo, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        addPanel.add(createLabel("Initial Balance:"), gbc);
+        gbc.gridx = 1;
+        addPanel.add(balanceField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        JPanel btnWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        btnWrapper.setOpaque(false);
+        btnWrapper.add(addBtn);
+        addPanel.add(btnWrapper, gbc);
+
+        addBtn.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter account name.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (getAccountByName(name) != null) {
+                JOptionPane.showMessageDialog(this, "An account with this name already exists.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            String type = (String) typeCombo.getSelectedItem();
+            double initBal = 0.0;
+            if (!balanceField.getText().trim().isEmpty()) {
+                try {
+                    initBal = Double.parseDouble(balanceField.getText().trim());
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid initial balance. Use a number.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            accounts.add(new Account(name, type, initBal));
+            refreshAllViews();
+            nameField.setText("");
+            balanceField.setText("");
+            typeCombo.setSelectedIndex(0);
+            JOptionPane.showMessageDialog(this, "Account added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(addPanel, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    // ===================== JOURNAL PANEL =====================
+    private JPanel createGeneralJournalPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new BorderLayout());
+
+        RoundedPanel topPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        topPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 5));
+
+        JLabel title = new JLabel("General Journal");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY);
+        topPanel.add(title);
+
+        panel.add(topPanel, BorderLayout.NORTH);
+
+        String[] cols = {"Date", "Description", "Account", "Debit", "Credit"};
+        journalTableModel = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = createModernTable(journalTableModel);
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        return panel;
+    }
+
+    // ===================== LEDGER PANEL =====================
+    private JPanel createGeneralLedgerPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new BorderLayout());
+
+        RoundedPanel topPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        topPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 5));
+
+        JLabel title = new JLabel("General Ledger");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(PRIMARY);
+        topPanel.add(title);
+
+        panel.add(topPanel, BorderLayout.NORTH);
+
+        ledgerAccountCombo = new JComboBox<>();
+        refreshLedgerAccountCombo();
+        
+        JPanel comboPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        comboPanel.setOpaque(false);
+        comboPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        comboPanel.setBackground(new Color(255, 255, 255));
+        
+        JLabel selectLabel = new JLabel("Select Account:");
+        selectLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        selectLabel.setForeground(PRIMARY);
+        
+        styleComboBox(ledgerAccountCombo);
+        
+        comboPanel.add(selectLabel);
+        comboPanel.add(ledgerAccountCombo);
+
+        String[] cols = {"Date", "Description", "Debit Account", "Credit Account", "Amount", "Running Balance"};
+        ledgerTableModel = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = createModernTable(ledgerTableModel);
+
+        ledgerAccountCombo.addActionListener(e -> {
+            String acc = (String) ledgerAccountCombo.getSelectedItem();
+            if (acc != null) updateGeneralLedgerTable(acc);
+        });
+
+        panel.add(comboPanel, BorderLayout.NORTH);
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        return panel;
+    }
+
+    // ===================== BALANCE SHEET PANEL =====================
+    private JPanel createBalanceSheetPanel() {
+        RoundedPanel panel = new RoundedPanel(0, CARD_BG, false);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setLayout(new GridLayout(1, 2, 20, 20));
+
+        // ASSETS PANEL
+        RoundedPanel assetsPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        assetsPanel.setLayout(new BorderLayout());
+        
+        RoundedPanel assetsHeader = new RoundedPanel(15, PRIMARY, false);
+        assetsHeader.setPreferredSize(new Dimension(0, 50));
+        assetsHeader.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        
+        JLabel assetsTitle = new JLabel("Assets");
+        assetsTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        assetsTitle.setForeground(Color.WHITE);
+        assetsHeader.add(assetsTitle);
+        
+        assetsPanel.add(assetsHeader, BorderLayout.NORTH);
+        
+        String[] assetCols = {"Account Name", "Amount"};
+        assetsTableModel = new DefaultTableModel(assetCols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable assetsTable = createModernTable(assetsTableModel);
+        assetsPanel.add(new JScrollPane(assetsTable), BorderLayout.CENTER);
+        
+        totalAssetsLabel = new JLabel("", SwingConstants.RIGHT);
+        totalAssetsLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        totalAssetsLabel.setForeground(PRIMARY);
+        totalAssetsLabel.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        totalAssetsLabel.setBackground(new Color(248, 249, 250));
+        totalAssetsLabel.setOpaque(true);
+        assetsPanel.add(totalAssetsLabel, BorderLayout.SOUTH);
+
+        // LIABILITIES AND EQUITY PANEL
+        RoundedPanel liabilitiesPanel = new RoundedPanel(15, new Color(255, 255, 255), false);
+        liabilitiesPanel.setLayout(new BorderLayout());
+        
+        RoundedPanel liabHeader = new RoundedPanel(15, SECONDARY, false);
+        liabHeader.setPreferredSize(new Dimension(0, 50));
+        liabHeader.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        
+        JLabel liabTitle = new JLabel("Liabilities & Owner's Equity");
+        liabTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        liabTitle.setForeground(Color.WHITE);
+        liabHeader.add(liabTitle);
+        
+        liabilitiesPanel.add(liabHeader, BorderLayout.NORTH);
+        
+        String[] liabCols = {"Account Name", "Amount"};
+        liabilitiesTableModel = new DefaultTableModel(liabCols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable liabTable = createModernTable(liabilitiesTableModel);
+        liabilitiesPanel.add(new JScrollPane(liabTable), BorderLayout.CENTER);
+        
+        totalLiabLabel = new JLabel("", SwingConstants.RIGHT);
+        totalLiabLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        totalLiabLabel.setForeground(SECONDARY);
+        totalLiabLabel.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        totalLiabLabel.setBackground(new Color(248, 249, 250));
+        totalLiabLabel.setOpaque(true);
+        liabilitiesPanel.add(totalLiabLabel, BorderLayout.SOUTH);
+
+        panel.add(assetsPanel);
+        panel.add(liabilitiesPanel);
+
+        panel.putClientProperty("updateLabels", (Runnable) () -> {
+            totalAssetsLabel.setText("Total Assets: " + formatAccounting(calculateTotalAssets()));
+            totalLiabLabel.setText("Total Liabilities & Equity: " + formatAccounting(calculateTotalLiabilitiesAndEquity()));
+        });
+
+        return panel;
+    }
+
+    // ===================== DOMAIN CLASSES =====================
+    private static class Account {
         private String name;
         private String type;
         private double balance;
 
-        public Account(String accountNumber, String name, String type, double initialBalance) {
-            this.accountNumber = accountNumber;
+        public Account(String name, String type, double initialBalance) {
             this.name = name;
             this.type = type;
             this.balance = initialBalance;
         }
-
-        public String getAccountNumber() { return accountNumber; }
         public String getName() { return name; }
         public String getType() { return type; }
         public double getBalance() { return balance; }
 
         public void applyDebit(double amount) {
-            // Asset, Expense, DRAWING increase with Debit
-            if (type.equals("Asset") || type.equals("Expense") || name.equals("Owner's Drawing")) {
+            if (type.equals("Asset") || type.equals("Expense")) {
                 balance += amount;
             } else {
-                // Liability, Revenue, CAPITAL decrease with Debit
                 balance -= amount;
             }
         }
-
         public void applyCredit(double amount) {
-            // Liability, Revenue, CAPITAL increase with Credit
-            if (type.equals("Liability") || type.equals("Revenue") || name.equals("Owner's Capital")) {
+            if (type.equals("Liability") || type.equals("Owner's Equity") || type.equals("Revenue")) {
                 balance += amount;
             } else {
-                // Asset, Expense, DRAWING decrease with Credit
                 balance -= amount;
             }
         }
     }
-    
-    private static class Transaction implements Serializable {
-        private static final long serialVersionUID = 1L;
+
+    private static class Transaction {
         private Date date;
         private String description;
         private String debitAccount;
@@ -176,169 +964,46 @@ public class AccountingApp extends JFrame {
         public double getAmount() { return amount; }
     }
 
-    // --- Setup and Helper Methods ---
-
-    private JPanel createHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(PRIMARY_BLUE); 
-        header.setBorder(new EmptyBorder(10, 15, 10, 15));
-
-        // Left Panel (Title and Quote)
-        JPanel titlePanel = new JPanel(new GridLayout(2, 1));
-        titlePanel.setOpaque(false);
-        
-        JLabel companyName = new JLabel("Accounting System");
-        companyName.setForeground(Color.WHITE);
-        companyName.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        
-        JLabel systemQuote = new JLabel("Transactions • Accounts • General Journal • General Ledger • Balance Sheet");
-        systemQuote.setForeground(SECONDARY_MINT);
-        systemQuote.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        
-        titlePanel.add(companyName);
-        titlePanel.add(systemQuote);
-
-        // Right Panel (Buttons)
-        JPanel menuPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        menuPanel.setOpaque(false);
-        
-        // --- NEW BUTTONS ---
-        JButton homeBtn = createStyledButton("Home");
-        JButton aboutBtn = createStyledButton("About");
-        // --- END NEW BUTTONS ---
-        
-        JButton openBtn = createStyledButton("Open File");
-        JButton saveBtn = createStyledButton("Save");
-        
-        // --- ACTION LISTENERS FOR NEW BUTTONS ---
-        homeBtn.addActionListener(e -> mainTabbedPane.setSelectedIndex(0)); // Index 0 is "Add New Transaction"
-        aboutBtn.addActionListener(e -> createAboutDialog().setVisible(true));
-        // --- END ACTION LISTENERS ---
-
-        openBtn.addActionListener(e -> openFile());
-        saveBtn.addActionListener(e -> saveFile());
-
-        // Add new buttons to the menu panel
-        menuPanel.add(homeBtn);
-        menuPanel.add(aboutBtn);
-        menuPanel.add(openBtn);
-        menuPanel.add(saveBtn);
-
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(menuPanel, BorderLayout.EAST);
-
-        return header;
-    }
-    
-    /**
-     * Creates and returns the About dialog window.
-     */
-    private JDialog createAboutDialog() {
-        JDialog dialog = new JDialog(this, "About this Accounting System", true);
-        dialog.setLayout(new BorderLayout(15, 15));
-        dialog.setSize(450, 300);
-        dialog.setLocationRelativeTo(this);
-        dialog.setBackground(BACKGROUND_LIGHT);
-        dialog.setResizable(false);
-
-        JPanel content = new JPanel(new BorderLayout(10, 10));
-        content.setBorder(new EmptyBorder(20, 20, 20, 20));
-        content.setBackground(Color.WHITE);
-
-        JLabel title = new JLabel("Accounting System Overview", SwingConstants.CENTER);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        title.setForeground(PRIMARY_BLUE.darker());
-
-        JTextArea info = new JTextArea();
-        info.setText(
-            "This application simulates a simple proprietorship accounting system based on the double-entry method.\n\n" +
-            "Key functionalities:\n" +
-            "1. **Add New Transaction (Home):** Records debits and credits that must always balance.\n" +
-            "2. **Chart of Accounts:** Displays all existing accounts and their running balances.\n" +
-            "3. **General Journal:** Shows the chronological list of all posted transactions.\n" +
-            "4. **General Ledger:** Allows viewing the detailed activity (T-account) and running balance for any selected account.\n" +
-            "5. **Balance Sheet:** Automatically generates the fundamental financial statement (Assets = Liabilities + Equity).\n\n" +
-            "Data can be saved and loaded using the 'Save' and 'Open File' buttons."+
-            "This system is designed for educational purposes to illustrate basic accounting principles."+
-            "It is not intended for actual financial reporting or compliance with accounting standards."+
-            "Always consult a professional accountant for real-world accounting needs."+
-            "\n\nDeveloped by Group 1(MCNF) for CC-ACCTNG21"+
-            "\nMembers: \n- Turceno, James Gabriel\n- Abad, Alexandra\n- Taburnal, Phoebe Fatima\n- Arong, Dara San\n- Cañoneo, Mark\n- Ranes, Andrea"+
-
-            "\n\n© 2024 Accounting System by MCNF. All rights reserved."
-        );
-        info.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        info.setWrapStyleWord(true);
-        info.setLineWrap(true);
-        info.setEditable(false);
-        info.setBackground(Color.WHITE);
-        info.setCaretPosition(0); // Scroll to top
-
-        content.add(title, BorderLayout.NORTH);
-        content.add(new JScrollPane(info), BorderLayout.CENTER);
-        
-        JButton closeBtn = createStyledButton("Close");
-        closeBtn.addActionListener(e -> dialog.dispose());
-        
-        JPanel southPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        southPanel.add(closeBtn);
-        southPanel.setBackground(Color.WHITE);
-
-        dialog.add(content, BorderLayout.CENTER);
-        dialog.add(southPanel, BorderLayout.SOUTH);
-        
-        return dialog;
-    }
-    
-    // Utility to create styled buttons
-    private JButton createStyledButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setBackground(SECONDARY_MINT);
-        btn.setForeground(PRIMARY_BLUE);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
+    // ===================== PREDEFINED ACCOUNTS =====================
     private void addPredefinedAccounts() {
         String[][] predefined = {
-            {"1001","Cash","Asset"},
-            {"1010","Accounts Receivable","Asset"},
-            {"1020","Prepaid Expenses","Asset"},
-            {"1030","Inventory","Asset"},
-            {"1040","Fixed Assets","Asset"},
-            {"1050","Accumulated Depreciation","Asset"},
-            {"1060","Other Assets","Asset"},
-            {"2001","Accounts Payable","Liability"},
-            {"2010","Accrued Liabilities","Liability"},
-            {"2020","Taxes Payable","Liability"},
-            {"2030","Payroll Payable","Liability"},
-            {"2040","Notes Payable","Liability"},
-            {"3001","Owner's Capital","Equity"}, 
-            {"3002","Owner's Drawing","Equity"}, 
-            {"4001","Revenue","Revenue"},
-            {"4010","Sales returns and allowances","Revenue"},
-            {"5001","Cost of Goods Sold","Expense"},
-            {"5010","Advertising Expense","Expense"},
-            {"5020","Bank Fees","Expense"},
-            {"5030","Depreciation Expense","Expense"},
-            {"5040","Payroll Tax Expense","Expense"},
-            {"5050","Rent Expense","Expense"},
-            {"5060","Supplies Expense","Expense"},
-            {"5070","Utilities Expense","Expense"},
-            {"5080","Wages Expense","Expense"},
-            {"6001","Other Expenses","Expense"}
+            {"Cash", "Asset", "0"},
+            {"Accounts Receivable", "Asset", "0"},
+            {"Inventory", "Asset", "0"},
+            {"Supplies", "Asset", "0"},
+            {"Prepaid Expenses", "Asset", "0"},
+            {"Equipment", "Asset", "0"},
+            {"Furniture and Fixtures", "Asset", "0"},
+            {"Accounts Payable", "Liability", "0"},
+            {"Notes Payable", "Liability", "0"},
+            {"Salaries Payable", "Liability", "0"},
+            {"Owner's Capital", "Owner's Equity", "0"},
+            {"Owner's Drawing", "Owner's Equity", "0"},
+            {"Service Revenue", "Revenue", "0"},
+            {"Sales Revenue", "Revenue", "0"},
+            {"Salaries Expense", "Expense", "0"},
+            {"Rent Expense", "Expense", "0"},
+            {"Utilities Expense", "Expense", "0"}
         };
 
         for (String[] acc : predefined) {
-            accounts.add(new Account(acc[0], acc[1], acc[2], 0.0));
+            accounts.add(new Account(acc[0], acc[1], Double.parseDouble(acc[2])));
         }
     }
-    
-    private String extractAccountName(String comboItem) {
-        return comboItem; 
+
+    // ===================== HELPERS =====================
+    private String formatNumber(double value) {
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
+        nf.setMinimumFractionDigits(2);
+        nf.setMaximumFractionDigits(2);
+        return nf.format(value);
+    }
+
+    private String formatAccounting(double value) {
+        if (value < 0) {
+            return "(" + formatNumber(Math.abs(value)) + ")";
+        }
+        return formatNumber(value);
     }
 
     private Account getAccountByName(String name) {
@@ -348,529 +1013,16 @@ public class AccountingApp extends JFrame {
         return null;
     }
 
-    // --- Data Persistence Methods (New) ---
-
-    // Data structure to hold data for serialization
-    private static class AccountingData implements Serializable {
-        private static final long serialVersionUID = 2L;
-        List<Account> accounts;
-        List<Transaction> transactions;
-
-        public AccountingData(List<Account> accounts, List<Transaction> transactions) {
-            this.accounts = accounts;
-            this.transactions = transactions;
-        }
+    private List<String> getDebitAccountNames() {
+        List<String> out = new ArrayList<>();
+        for (Account a : accounts) out.add(a.getName());
+        return out;
     }
 
-    private void saveFile() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Save Accounting File");
-        
-        int userSelection = fileChooser.showSaveDialog(this);
-        
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToSave = fileChooser.getSelectedFile();
-            if (!fileToSave.getName().toLowerCase().endsWith(".dat")) {
-                fileToSave = new File(fileToSave.toString() + ".dat");
-            }
-            
-            try (FileOutputStream fileOut = new FileOutputStream(fileToSave);
-                 ObjectOutputStream objectOut = new ObjectOutputStream(fileOut)) {
-                
-                AccountingData data = new AccountingData(this.accounts, this.transactions);
-                objectOut.writeObject(data);
-                JOptionPane.showMessageDialog(this, "File saved successfully to:\n" + fileToSave.getAbsolutePath(), "Save Successful", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this, "Error saving file: " + ex.getMessage(), "Save Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    private void openFile() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Open Accounting File");
-        
-        int userSelection = fileChooser.showOpenDialog(this);
-        
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToOpen = fileChooser.getSelectedFile();
-            
-            try (FileInputStream fileIn = new FileInputStream(fileToOpen);
-                 ObjectInputStream objectIn = new ObjectInputStream(fileIn)) {
-                
-                AccountingData data = (AccountingData) objectIn.readObject();
-                
-                this.accounts = data.accounts;
-                this.transactions = data.transactions;
-                
-                // Ensure accounts are re-initialized if file was empty or corrupted (safety check)
-                if (this.accounts.isEmpty()) addPredefinedAccounts();
-                
-                refreshAllViews();
-                
-                JOptionPane.showMessageDialog(this, "File loaded successfully from:\n" + fileToOpen.getAbsolutePath(), "Open Successful", JOptionPane.INFORMATION_MESSAGE);
-            } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(this, "File not found.", "Open Error", JOptionPane.ERROR_MESSAGE);
-            } catch (IOException | ClassNotFoundException ex) {
-                JOptionPane.showMessageDialog(this, "Error opening file. Check the file format. Details: " + ex.getMessage(), "Open Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-    
-    // Helper method for creating styled labels
-    private JLabel createFormLabel(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lbl.setForeground(PRIMARY_BLUE);
-        return lbl;
-    }
-
-
-    // --- Panel Creation Methods (Redesigned UI) ---
-
-    private JPanel createAddTransactionPanel() {
-        JPanel panel = new JPanel(new BorderLayout(15, 15));
-        panel.setBackground(BACKGROUND_LIGHT);
-        panel.setBorder(new EmptyBorder(30, 100, 30, 100)); // Added padding
-        
-        JLabel title = new JLabel("Post New Journal Entry");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        title.setForeground(PRIMARY_BLUE);
-        title.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(title, BorderLayout.NORTH);
-
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setBackground(Color.WHITE);
-        form.setBorder(BorderFactory.createLineBorder(PRIMARY_BLUE.darker(), 1));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(12, 15, 12, 15);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
-
-        JTextField dateField = new JTextField(sdf.format(new Date()));
-        JTextField descField = new JTextField();
-        debitComboGlobal = new JComboBox<>();
-        creditComboGlobal = new JComboBox<>();
-        JTextField amountField = new JTextField();
-
-        // Style Form Components
-        dateField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        descField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        amountField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        debitComboGlobal.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        creditComboGlobal.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        
-        refreshAccountCombos();
-        
-
-        gbc.gridx = 0; gbc.gridy = 0; form.add(createFormLabel("Date (YYYY-MM-DD):"), gbc);
-        gbc.gridx = 1; form.add(dateField, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; form.add(createFormLabel("Description:"), gbc);
-        gbc.gridx = 1; form.add(descField, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 2; form.add(createFormLabel("Debit Account:"), gbc);
-        gbc.gridx = 1; form.add(debitComboGlobal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 3; form.add(createFormLabel("Credit Account:"), gbc);
-        gbc.gridx = 1; form.add(creditComboGlobal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 4; form.add(createFormLabel("Amount:"), gbc);
-        gbc.gridx = 1; form.add(amountField, gbc);
-        
-        panel.add(form, BorderLayout.CENTER);
-
-        // Buttons Panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        buttonPanel.setOpaque(false);
-        JButton postBtn = createStyledButton("Post Transaction (F5)");
-        JButton clearBtn = createStyledButton("Clear Fields (Esc)");
-        
-        postBtn.setBackground(SECONDARY_MINT.darker());
-        postBtn.setForeground(Color.WHITE);
-        clearBtn.setBackground(Color.LIGHT_GRAY);
-        clearBtn.setForeground(PRIMARY_BLUE);
-
-        buttonPanel.add(postBtn);
-        buttonPanel.add(clearBtn);
-        
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        // Action listeners remain the same
-        postBtn.addActionListener(e -> postTransaction(dateField, descField, amountField));
-        clearBtn.addActionListener(e -> clearTransactionFields(dateField, descField, amountField));
-        
-        // Add Key Bindings (F5 to post, Esc to clear)
-        InputMap inputMap = panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-        ActionMap actionMap = panel.getActionMap();
-
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "post");
-        actionMap.put("post", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                postTransaction(dateField, descField, amountField);
-            }
-        });
-        
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "clear");
-        actionMap.put("clear", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                clearTransactionFields(dateField, descField, amountField);
-            }
-        });
-
-
-        return panel;
-    }
-    
-    // Extracted transaction logic
-    private void postTransaction(JTextField dateField, JTextField descField, JTextField amountField) {
-        String dateStr = dateField.getText().trim();
-        String desc = descField.getText().trim();
-        
-        String debitAccComboItem = (String) debitComboGlobal.getSelectedItem();
-        String creditAccComboItem = (String) creditComboGlobal.getSelectedItem();
-        String debitAccName = extractAccountName(debitAccComboItem);
-        String creditAccName = extractAccountName(creditAccComboItem);
-        
-        String amtStr = amountField.getText().trim();
-
-        Date date;
-        try {
-            date = sdf.parse(dateStr);
-        } catch (ParseException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.");
-            return;
-        }
-
-        double amount;
-        try {
-            amount = Double.parseDouble(amtStr);
-            if (amount <= 0) throw new NumberFormatException();
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Amount must be a number greater than zero.");
-            return;
-        }
-
-        if (debitAccName == null || creditAccName == null) {
-            JOptionPane.showMessageDialog(this, "Select both debit and credit accounts.");
-            return;
-        }
-        if (debitAccName.equals(creditAccName)) {
-            JOptionPane.showMessageDialog(this, "Debit and credit accounts cannot be the same.");
-            return;
-        }
-
-        Account debitAcc = getAccountByName(debitAccName);
-        Account creditAcc = getAccountByName(creditAccName);
-        if (debitAcc == null || creditAcc == null) {
-            JOptionPane.showMessageDialog(this, "Selected account not found.");
-            return;
-        }
-
-        debitAcc.applyDebit(amount);
-        creditAcc.applyCredit(amount);
-
-        Transaction tx = new Transaction(date, desc, debitAccName, creditAccName, amount);
-        transactions.add(tx);
-
-        transactions.sort(Comparator.comparing(Transaction::getDate));
-
-        refreshAllViews();
-
-        JOptionPane.showMessageDialog(this, "Transaction posted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-        clearTransactionFields(dateField, descField, amountField);
-    }
-    
-    private void clearTransactionFields(JTextField dateField, JTextField descField, JTextField amountField) {
-        dateField.setText(sdf.format(new Date()));
-        descField.setText("");
-        amountField.setText("");
-        if (debitComboGlobal.getItemCount() > 0) debitComboGlobal.setSelectedIndex(0);
-        if (creditComboGlobal.getItemCount() > 0) creditComboGlobal.setSelectedIndex(0);
-    }
-
-
-    private JPanel createTransactionsPanel() {
-        JPanel panel = createStyledPanel();
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.setBackground(Color.WHITE);
-        top.setBorder(new EmptyBorder(10, 10, 10, 10));
-        JTextField searchField = new JTextField(30);
-        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        JButton searchBtn = createStyledButton("Search");
-        
-        JLabel searchLabel = new JLabel("Search (date/description/account):");
-        searchLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        searchLabel.setForeground(PRIMARY_BLUE);
-        
-        top.add(searchLabel);
-        top.add(searchField);
-        top.add(searchBtn);
-
-        String[] columns = {"Date", "Description", "Debit Account", "Credit Account", "Amount"};
-        transactionsTableModel = new DefaultTableModel(columns, 0) {
-            public boolean isCellEditable(int r, int c) { return false; }
-        };
-        JTable table = createStyledTable(transactionsTableModel);
-        
-        searchBtn.addActionListener(e -> {
-            String query = searchField.getText().trim().toLowerCase();
-            filterTransactions(query);
-        });
-
-        searchField.addActionListener(e -> filterTransactions(searchField.getText().trim().toLowerCase()));
-
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel createAccountsPanel() {
-        JPanel panel = createStyledPanel();
-        
-        String[] columns = {"Account no.", "Account Name", "Type", "Current Balance"}; 
-        accountsTableModel = new DefaultTableModel(columns, 0) {
-            public boolean isCellEditable(int r,int c){ return false; }
-        };
-        JTable table = createStyledTable(accountsTableModel);
-        
-        refreshAccountsTable();
-
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel createGeneralJournalPanel() {
-        JPanel panel = createStyledPanel();
-        String[] cols = {"Date", "Description", "Account", "Debit", "Credit"};
-        journalTableModel = new DefaultTableModel(cols, 0) {
-            public boolean isCellEditable(int r,int c){ return false; }
-        };
-        JTable table = createStyledTable(journalTableModel);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel createGeneralLedgerPanel() {
-        JPanel panel = createStyledPanel();
-        ledgerAccountCombo = new JComboBox<>();
-        refreshLedgerAccountCombo();
-        
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        top.setBackground(Color.WHITE);
-        top.setBorder(new EmptyBorder(10, 10, 10, 10));
-        
-        JLabel selectLabel = new JLabel("Select Account:");
-        selectLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        selectLabel.setForeground(PRIMARY_BLUE);
-        
-        ledgerAccountCombo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        
-        top.add(selectLabel);
-        top.add(ledgerAccountCombo);
-
-        String[] cols = {"Date", "Description", "Debit Account", "Credit Account", "Amount", "Running Balance"};
-        ledgerTableModel = new DefaultTableModel(cols, 0) {
-            public boolean isCellEditable(int r,int c){ return false; }
-        };
-        JTable table = createStyledTable(ledgerTableModel);
-
-        ledgerAccountCombo.addActionListener(e -> {
-            String acc = (String) ledgerAccountCombo.getSelectedItem();
-            if (acc != null) updateGeneralLedgerTable(acc);
-        });
-
-        panel.add(top, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel createBalanceSheetPanel() {
-        JPanel panel = createStyledPanel();
-        panel.setLayout(new GridLayout(1,2, 10, 10)); // Added spacing between panels
-        
-        // ASSETS PANEL
-        JPanel assetsPanel = createStyledSubPanel("Assets");
-        String[] assetCols = {"Account Name", "Amount"};
-        assetsTableModel = new DefaultTableModel(assetCols, 0) {
-            public boolean isCellEditable(int r,int c){ return false; }
-        };
-        JTable assetsTable = createStyledTable(assetsTableModel);
-        assetsPanel.add(new JScrollPane(assetsTable), BorderLayout.CENTER);
-        JLabel totalAssetsLabel = createTotalLabel();
-        assetsPanel.add(totalAssetsLabel, BorderLayout.SOUTH);
-
-        // LIABILITIES AND EQUITY PANEL
-        JPanel liabilitiesPanel = createStyledSubPanel("Liabilities and Equity");
-        String[] liabCols = {"Account Name", "Amount"};
-        liabilitiesTableModel = new DefaultTableModel(liabCols, 0) {
-            public boolean isCellEditable(int r,int c){ return false; }
-        };
-        JTable liabTable = createStyledTable(liabilitiesTableModel);
-        liabilitiesPanel.add(new JScrollPane(liabTable), BorderLayout.CENTER);
-        JLabel totalLiabLabel = createTotalLabel();
-        liabilitiesPanel.add(totalLiabLabel, BorderLayout.SOUTH);
-
-        panel.add(assetsPanel);
-        panel.add(liabilitiesPanel);
-
-        Runnable updateLabels = () -> {
-            totalAssetsLabel.setText("Total Assets: " + formatAccounting(calculateTotalAssets()));
-            totalLiabLabel.setText("Total Liabilities & Equity: " + formatAccounting(calculateTotalLiabilitiesAndEquity()));
-        };
-
-        updateLabels.run();
-        panel.putClientProperty("updateLabels", updateLabels);
-        return panel;
-    }
-    
-    // Styled UI helpers
-    private JPanel createStyledPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(BACKGROUND_LIGHT);
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        return panel;
-    }
-    
-    private JPanel createStyledSubPanel(String titleText) {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(PRIMARY_BLUE, 1),
-            titleText,
-            javax.swing.border.TitledBorder.LEADING,
-            javax.swing.border.TitledBorder.TOP,
-            new Font("Segoe UI", Font.BOLD, 16),
-            SECONDARY_MINT.darker()
-        ));
-        return panel;
-    }
-    
-    /**
-     * Creates a styled JTable, setting the header to dark blue 
-     * and minimizing selection/hover effects.
-     */
-    private JTable createStyledTable(DefaultTableModel model) {
-        JTable table = new JTable(model);
-        table.setAutoCreateRowSorter(true);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setRowHeight(25);
-        table.setFillsViewportHeight(true);
-        
-        // --- Header Styling Fixes (Row 1) ---
-        JTableHeader header = table.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        final Color HEADER_BG = PRIMARY_BLUE.darker();
-        final Color HEADER_FG = Color.WHITE;
-
-        // 1. Set the fixed background and foreground colors
-        header.setBackground(HEADER_BG);
-        header.setForeground(HEADER_FG);
-        
-        // 2. Override the default header renderer to guarantee consistent colors 
-        //    and ignore selection/focus states (which cause the unwanted 'hover' effect).
-        header.setDefaultRenderer(new TableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable jTable, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = new JLabel(value.toString(), SwingConstants.CENTER);
-                label.setOpaque(true);
-                label.setBackground(HEADER_BG);
-                label.setForeground(HEADER_FG);
-                label.setFont(header.getFont());
-                label.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, Color.LIGHT_GRAY));
-                return label;
-            }
-        });
-
-        // --- Table Row Styling Fixes (Removing Hover on Data Rows) ---
-        // Minimize/remove visual hover/selection effect for data rows
-        Color defaultTableBackground = table.getBackground();
-        Color defaultTableForeground = table.getForeground();
-        table.setSelectionBackground(defaultTableBackground);
-        table.setSelectionForeground(defaultTableForeground);
-        
-        return table;
-    }
-    
-    private JLabel createTotalLabel() {
-        JLabel label = new JLabel("", SwingConstants.RIGHT);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        label.setForeground(PRIMARY_BLUE);
-        label.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        label.setBackground(new Color(230, 230, 230)); // Light gray background for total
-        label.setOpaque(true);
-        return label;
-    }
-    // End Styled UI helpers
-
-    private void filterTransactions(String query) {
-        transactionsTableModel.setRowCount(0);
-        for (int i = transactions.size()-1; i >= 0; i--) {
-            Transaction tx = transactions.get(i);
-            String dateStr = sdf.format(tx.getDate());
-            if (query.isEmpty()
-                    || dateStr.contains(query)
-                    || tx.getDescription().toLowerCase().contains(query)
-                    || tx.getDebitAccount().toLowerCase().contains(query)
-                    || tx.getCreditAccount().toLowerCase().contains(query)) {
-                transactionsTableModel.addRow(new Object[]{
-                        dateStr,
-                        tx.getDescription(),
-                        tx.getDebitAccount(),
-                        tx.getCreditAccount(),
-                        formatCurrency(tx.getAmount())
-                });
-            }
-        }
-    }
-
-    private void refreshAccountsTable() {
-        if (accountsTableModel == null) return;
-        accountsTableModel.setRowCount(0);
-        for (Account a : accounts) {
-            accountsTableModel.addRow(new Object[]{a.getAccountNumber(), a.getName(), a.getType(), formatAccounting(a.getBalance())});
-        }
-    }
-
-    private void updateGeneralLedgerTable(String accountName) {
-        ledgerTableModel.setRowCount(0);
-        Account acc = getAccountByName(accountName);
-        if (acc == null) return;
-
-        double running = 0.0;
-        
-        boolean normalBalanceIsDebit = acc.getType().equals("Asset") || acc.getType().equals("Expense") || acc.getName().equals("Owner's Drawing");
-
-        for (Transaction tx : transactions) {
-            double amount = tx.getAmount();
-            String dateStr = sdf.format(tx.getDate());
-            
-            // Debit Effect
-            if (tx.getDebitAccount().equals(accountName)) {
-                if (normalBalanceIsDebit) {
-                    running += amount; 
-                } else {
-                    running -= amount; 
-                }
-                ledgerTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getDebitAccount(), tx.getCreditAccount(),
-                        formatCurrency(amount), 
-                        formatAccounting(running)});
-            }
-            
-            // Credit Effect
-            if (tx.getCreditAccount().equals(accountName)) {
-                if (normalBalanceIsDebit) {
-                    running -= amount; 
-                } else {
-                    running += amount; 
-                }
-                ledgerTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getDebitAccount(), tx.getCreditAccount(),
-                        formatCurrency(amount), 
-                        formatAccounting(running)});
-            }
-        }
+    private List<String> getCreditAccountNames() {
+        List<String> out = new ArrayList<>();
+        for (Account a : accounts) out.add(a.getName());
+        return out;
     }
 
     private List<String> getAllAccountNames() {
@@ -879,44 +1031,131 @@ public class AccountingApp extends JFrame {
         return out;
     }
 
+    private List<String> getAllAccountNamesSorted() {
+        List<String> list = getAllAccountNames();
+        Collections.sort(list);
+        return list;
+    }
+
     private void refreshAccountCombos() {
-        List<String> allAccountNames = getAllAccountNames();
+        List<String> debits = getDebitAccountNames();
+        List<String> credits = getCreditAccountNames();
 
         if (debitComboGlobal != null) {
             debitComboGlobal.removeAllItems();
-            for (String s : allAccountNames) debitComboGlobal.addItem(s);
+            for (String s : debits) debitComboGlobal.addItem(s);
         }
         if (creditComboGlobal != null) {
             creditComboGlobal.removeAllItems();
-            for (String s : allAccountNames) creditComboGlobal.addItem(s);
+            for (String s : credits) creditComboGlobal.addItem(s);
         }
     }
 
     private void refreshLedgerAccountCombo() {
         if (ledgerAccountCombo == null) return;
         ledgerAccountCombo.removeAllItems();
-        for (String s : getAllAccountNames()) ledgerAccountCombo.addItem(s);
+        for (String s : getAllAccountNamesSorted()) ledgerAccountCombo.addItem(s);
+        if (ledgerAccountCombo.getItemCount() > 0) ledgerAccountCombo.setSelectedIndex(0);
     }
 
-    // --- Refresh All Views ---
+    private void updateGeneralLedgerTable(String accountName) {
+        ledgerTableModel.setRowCount(0);
+        Account acc = getAccountByName(accountName);
+        if (acc == null) return;
+
+        double running = 0.0;
+        for (Transaction tx : transactions) {
+            double amount = tx.getAmount();
+            String dateStr = sdf.format(tx.getDate());
+            boolean added = false;
+            if (tx.getDebitAccount().equals(accountName)) {
+                if (acc.getType().equals("Asset") || acc.getType().equals("Expense")) {
+                    running += amount;
+                } else {
+                    running -= amount;
+                }
+                ledgerTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getDebitAccount(), tx.getCreditAccount(),
+                        formatAccounting(amount),
+                        formatAccounting(running)});
+                added = true;
+            }
+            if (tx.getCreditAccount().equals(accountName)) {
+                if (acc.getType().equals("Liability") || acc.getType().equals("Owner's Equity") || acc.getType().equals("Revenue")) {
+                    running += amount;
+                } else {
+                    running -= amount;
+                }
+                ledgerTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getDebitAccount(), tx.getCreditAccount(),
+                        formatAccounting(amount),
+                        formatAccounting(running)});
+                added = true;
+            }
+        }
+    }
+
+    private double calculateTotalAssets() {
+        double sum = 0;
+        for (Account a : accounts) if (a.getType().equals("Asset")) sum += a.getBalance();
+        return sum;
+    }
+
+    private double calculateTotalLiabilitiesAndEquity() {
+        double total = 0;
+        double capital = 0;
+        double drawing = 0;
+        double revenue = 0;
+        double expense = 0;
+
+        for (Account a : accounts) {
+            switch (a.getType()) {
+                case "Liability":
+                    total += a.getBalance();
+                    break;
+                case "Owner's Equity":
+                    if (a.getName().equals("Owner's Capital"))
+                        capital += a.getBalance();
+                    else if (a.getName().equals("Owner's Drawing"))
+                        drawing += a.getBalance();
+                    break;
+                case "Revenue":
+                    revenue += a.getBalance();
+                    break;
+                case "Expense":
+                    expense += a.getBalance();
+                    break;
+            }
+        }
+
+        double netIncome = revenue - expense;
+        double equity = capital - drawing + netIncome;
+
+        return total + equity;
+    }
 
     private void refreshAllViews() {
         if (transactionsTableModel != null) {
             filterTransactions("");
         }
-        
-        refreshAccountsTable(); 
+
+        if (accountsTableModel != null) {
+            accountsTableModel.setRowCount(0);
+            for (Account a : accounts) {
+                accountsTableModel.addRow(new Object[]{a.getName(), a.getType(), formatAccounting(a.getBalance())});
+            }
+        }
 
         if (journalTableModel != null) {
             journalTableModel.setRowCount(0);
             for (Transaction tx : transactions) {
                 String dateStr = sdf.format(tx.getDate());
-                // debit row
-                journalTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getDebitAccount(),
-                        formatCurrency(tx.getAmount()), ""});
-                // credit row
-                journalTableModel.addRow(new Object[]{dateStr, tx.getDescription(), tx.getCreditAccount(),
-                        "", formatCurrency(tx.getAmount())});
+                journalTableModel.addRow(new Object[]{
+                        dateStr, tx.getDescription(), tx.getDebitAccount(),
+                        formatAccounting(tx.getAmount()), ""
+                });
+                journalTableModel.addRow(new Object[]{
+                        dateStr, tx.getDescription(), tx.getCreditAccount(),
+                        "", formatAccounting(tx.getAmount())
+                });
             }
         }
 
@@ -931,26 +1170,22 @@ public class AccountingApp extends JFrame {
         if (assetsTableModel != null && liabilitiesTableModel != null) {
             assetsTableModel.setRowCount(0);
             liabilitiesTableModel.setRowCount(0);
-            
             for (Account a : accounts) {
                 if (a.getType().equals("Asset")) {
                     assetsTableModel.addRow(new Object[]{a.getName(), formatAccounting(a.getBalance())});
-                } else if (a.getType().equals("Liability")) {
+                } else if (a.getType().equals("Liability") || a.getType().equals("Owner's Equity")) {
                     liabilitiesTableModel.addRow(new Object[]{a.getName(), formatAccounting(a.getBalance())});
                 }
             }
-            
-            double totalEquity = calculateProprietorshipEquity();
-            liabilitiesTableModel.addRow(new Object[]{"", ""}); // Separator
-            liabilitiesTableModel.addRow(new Object[]{"Owner's Equity (Ending Balance)", formatAccounting(totalEquity)});
         }
 
         refreshAccountCombos();
 
-        // run any UI label updaters (balance sheet totals)
-        if (mainTabbedPane != null) {
-            for (int i = 0; i < mainTabbedPane.getTabCount(); i++) {
-                Component c = mainTabbedPane.getComponentAt(i);
+        Component center = getContentPane().getComponent(1);
+        if (center instanceof JTabbedPane) {
+            JTabbedPane tp = (JTabbedPane) center;
+            for (int i = 0; i < tp.getTabCount(); i++) {
+                Component c = tp.getComponentAt(i);
                 if (c instanceof JPanel) {
                     Object prop = ((JPanel) c).getClientProperty("updateLabels");
                     if (prop instanceof Runnable) ((Runnable) prop).run();
@@ -958,57 +1193,17 @@ public class AccountingApp extends JFrame {
             }
         }
     }
-    // --- End Refresh All Views ---
+
+    // ===================== MAIN =====================
     
-    // --- Financial Calculations ---
-    
-    private double calculateProprietorshipEquity() {
-        double capital = 0;
-        double drawing = 0;
-        double revenue = 0;
-        double expense = 0;
-
-        for (Account a : accounts) {
-            if (a.getName().equals("Owner's Capital")) {
-                capital = a.getBalance();
-            } else if (a.getName().equals("Owner's Drawing")) {
-                drawing = a.getBalance();
-            } else if (a.getType().equals("Revenue")) {
-                revenue += a.getBalance();
-            } else if (a.getType().equals("Expense")) {
-                expense += a.getBalance();
-            }
-        }
-
-        double netIncome = revenue - expense;
-        return capital + netIncome - drawing; 
-    }
-
-    private double calculateTotalAssets() {
-        double sum = 0;
-        for (Account a : accounts) if (a.getType().equals("Asset")) sum += a.getBalance();
-        return sum;
-    }
-
-    private double calculateTotalLiabilitiesAndEquity() {
-        double totalLiabilities = 0;
-        
-        for (Account a : accounts) {
-            if (a.getType().equals("Liability")) {
-                totalLiabilities += a.getBalance();
-            }
-        }
-        
-        double totalEquity = calculateProprietorshipEquity();
-        
-        return totalLiabilities + totalEquity; 
-    }
-
-    // --- Main Method ---
     public static void main(String[] args) {
-        // Jframe_Icon fic = new Jframe_Icon();
-        // fic.setVisible(true);
-
+        try {
+            // Set system look and feel for better styling
+            UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+        } catch (Exception e) {
+            // Use default look and feel
+        }
+        
         SwingUtilities.invokeLater(() -> new AccountingApp());
     }
 }
